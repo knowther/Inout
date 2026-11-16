@@ -5,7 +5,25 @@ Sistema simples de estoque: cadastro de itens, entradas, saídas e quantidade at
 - **Backend:** Spring Boot 3 (Java 17+) + SQLite (`backend/`)
 - **Frontend:** React + Vite (`frontend/`)
 
-## Como rodar
+## Rodar com Docker (recomendado)
+
+Precisa apenas do Docker instalado.
+
+```bash
+docker compose up -d --build
+```
+
+Abra `http://localhost:8080`. O frontend (nginx) serve a tela e repassa `/api` para o backend.
+Os dados do SQLite ficam no volume `estoque-dados` e não se perdem ao reiniciar ou atualizar os containers.
+
+- Parar: `docker compose down`
+- Ver logs: `docker compose logs -f`
+- Trocar a porta: altere `"8080:80"` no `docker-compose.yml` (ex.: `"80:80"`)
+- Backup do banco: `docker compose cp backend:/data/estoque.db ./backup-estoque.db`
+
+> Cuidado: `docker compose down -v` apaga o volume e todos os dados.
+
+## Rodar sem Docker (desenvolvimento)
 
 ### Backend
 ```bash
