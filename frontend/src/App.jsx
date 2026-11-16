@@ -1,27 +1,22 @@
-import { useState } from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { ToastProvider } from './components/Toast.jsx'
+import Layout from './components/Layout.jsx'
+import Dashboard from './components/Dashboard.jsx'
 import Itens from './Itens.jsx'
 import Movimentacoes from './Movimentacoes.jsx'
 
 export default function App() {
-  const [aba, setAba] = useState('itens')
-
   return (
-    <div className="container">
-      <header>
-        <h1>Controle de Estoque</h1>
-        <span className="subtitulo">Clínica de Diálise</span>
-      </header>
-
-      <nav className="abas">
-        <button className={aba === 'itens' ? 'ativa' : ''} onClick={() => setAba('itens')}>
-          Itens
-        </button>
-        <button className={aba === 'mov' ? 'ativa' : ''} onClick={() => setAba('mov')}>
-          Entrada / Saída
-        </button>
-      </nav>
-
-      {aba === 'itens' ? <Itens /> : <Movimentacoes />}
-    </div>
+    <BrowserRouter>
+      <ToastProvider>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/itens" element={<Itens />} />
+            <Route path="/movimentacoes" element={<Movimentacoes />} />
+          </Route>
+        </Routes>
+      </ToastProvider>
+    </BrowserRouter>
   )
 }

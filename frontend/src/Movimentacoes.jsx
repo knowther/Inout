@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
+import { useToast } from './components/Toast.jsx'
+import { ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight, Send } from 'lucide-react'
 
 const vazio = { itemId: '', tipo: 'ENTRADA', quantidade: '', observacao: '' }
 
@@ -11,27 +13,19 @@ export default function Movimentacoes() {
   const [movs, setMovs] = useState([])
   const [form, setForm] = useState(vazio)
   const [filtroItem, setFiltroItem] = useState('')
-  const [erro, setErro] = useState('')
-  const [sucesso, setSucesso] = useState('')
+  const toast = useToast()
 
-  const carregarItens = () => api.listarItens().then(setItens).catch((e) => setErro(e.message))
+  const carregarItens = () => api.listarItens().then(setItens).catch(e => toast.error(e.message))
   const carregarMovs = () =>
-    api.listarMovimentacoes(filtroItem).then(setMovs).catch((e) => setErro(e.message))
+    api.listarMovimentacoes(filtroItem).then(setMovs).catch(e => toast.error(e.message))
 
-  useEffect(() => {
-    carregarItens()
-  }, [])
+  useEffect(() => { carregarItens() }, [])
+  useEffect(() => { carregarMovs() }, [filtroItem])
 
-  useEffect(() => {
-    carregarMovs()
-  }, [filtroItem])
-
-  const itemSelecionado = itens.find((i) => String(i.id) === String(form.itemId))
+  const itemSelecionado = itens.find(i => String(i.id) === String(form.itemId))
 
   const registrar = async (e) => {
     e.preventDefault()
-    setErro('')
-    setSucesso('')
     try {
       await api.registrarMovimentacao({
         itemId: Number(form.itemId),
@@ -39,122 +33,162 @@ export default function Movimentacoes() {
         quantidade: Number(form.quantidade),
         observacao: form.observacao,
       })
-      setSucesso(`${form.tipo === 'ENTRADA' ? 'Entrada' : 'Saída'} registrada.`)
+      toast.success(
+        form.tipo === 'ENTRADA'
+          ? `Entrada de ${form.quantidade} registrada com sucesso!`
+          : `Saída de ${form.quantidade} registrada com sucesso!`
+      )
       setForm({ ...vazio, tipo: form.tipo })
       carregarItens()
       carregarMovs()
-    } catch (e) {
-      setErro(e.message)
+    } catch (err) {
+      toast.error(err.message)
     }
   }
 
   return (
-    <section>
-      <form className="card form-linha" onSubmit={registrar}>
-        <h2>Registrar movimentação</h2>
-        <div className="tipo">
-          <button
-            type="button"
-            className={form.tipo === 'ENTRADA' ? 'entrada ativa' : 'entrada'}
-            onClick={() => setForm({ ...form, tipo: 'ENTRADA' })}
-          >
-            Entrada
-          </button>
-          <button
-            type="button"
-            className={form.tipo === 'SAIDA' ? 'saida ativa' : 'saida'}
-            onClick={() => setForm({ ...form, tipo: 'SAIDA' })}
-          >
-            Saída
-          </button>
+    <div>
+      <div className="page-header">
+        <div>
+          <h1>Movimentações</h1>
+          <p>Registre entradas e saídas do estoque</p>
         </div>
-        <label>
-          Item
-          <select
-            value={form.itemId}
-            onChange={(e) => setForm({ ...form, itemId: e.target.value })}
-            required
-          >
-            <option value="">Selecione...</option>
-            {itens.map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.nome} ({i.quantidade} {i.unidade})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Quantidade{itemSelecionado ? ` (${itemSelecionado.unidade})` : ''}
-          <input
-            type="number"
-            min="1"
-            max={form.tipo === 'SAIDA' && itemSelecionado ? itemSelecionado.quantidade : undefined}
-            value={form.quantidade}
-            onChange={(e) => setForm({ ...form, quantidade: e.target.value })}
-            required
-          />
-        </label>
-        <label className="largo">
-          Observação
-          <input
-            value={form.observacao}
-            onChange={(e) => setForm({ ...form, observacao: e.target.value })}
-            placeholder="Ex.: NF 1234, lote, setor, paciente/sessão..."
-          />
-        </label>
-        <div className="acoes">
-          <button type="submit">Registrar</button>
-        </div>
-      </form>
+      </div>
 
-      {erro && <div className="erro">{erro}</div>}
-      {sucesso && <div className="sucesso">{sucesso}</div>}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-header" style={{ marginBottom: 16 }}>
+          <h2>Nova Movimentação</h2>
+        </div>
+
+        <form onSubmit={registrar}>
+          <div className="toggle-group" style={{ marginBottom: 20 }}>
+            <button
+              type="button"
+              className={form.tipo === 'ENTRADA' ? 'active-entrada' : ''}
+              onClick={() => setForm({ ...form, tipo: 'ENTRADA' })}
+            >
+              <ArrowDownToLine size={16} style={{ marginRight: 6 }} />
+              Entrada
+            </button>
+            <button
+              type="button"
+              className={form.tipo === 'SAIDA' ? 'active-saida' : ''}
+              onClick={() => setForm({ ...form, tipo: 'SAIDA' })}
+            >
+              <ArrowUpFromLine size={16} style={{ marginRight: 6 }} />
+              Saída
+            </button>
+          </div>
+
+          <div className="form-grid">
+            <div className="form-group">
+              <label>Item</label>
+              <select
+                value={form.itemId}
+                onChange={e => setForm({ ...form, itemId: e.target.value })}
+                required
+              >
+                <option value="">Selecione um item...</option>
+                {itens.map(i => (
+                  <option key={i.id} value={i.id}>
+                    {i.nome} — {i.quantidade} {i.unidade} em estoque
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>
+                Quantidade{itemSelecionado ? ` (${itemSelecionado.unidade})` : ''}
+              </label>
+              <input
+                type="number"
+                min="1"
+                max={form.tipo === 'SAIDA' && itemSelecionado ? itemSelecionado.quantidade : undefined}
+                value={form.quantidade}
+                onChange={e => setForm({ ...form, quantidade: e.target.value })}
+                placeholder="0"
+                required
+              />
+            </div>
+            <div className="form-group full-width">
+              <label>Observação</label>
+              <input
+                value={form.observacao}
+                onChange={e => setForm({ ...form, observacao: e.target.value })}
+                placeholder="Ex.: NF 1234, lote ABC, setor, paciente/sessão..."
+              />
+            </div>
+            <div className="form-actions">
+              <button type="submit" className={`btn ${form.tipo === 'ENTRADA' ? 'btn-success' : 'btn-danger'}`}>
+                <Send size={16} />
+                Registrar {form.tipo === 'ENTRADA' ? 'Entrada' : 'Saída'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
 
       <div className="card">
-        <div className="cabecalho-tabela">
+        <div className="card-header">
           <h2>Histórico</h2>
-          <select value={filtroItem} onChange={(e) => setFiltroItem(e.target.value)}>
+          <select
+            value={filtroItem}
+            onChange={e => setFiltroItem(e.target.value)}
+            style={{ width: 'auto', minWidth: 180 }}
+          >
             <option value="">Todos os itens</option>
-            {itens.map((i) => (
+            {itens.map(i => (
               <option key={i.id} value={i.id}>{i.nome}</option>
             ))}
           </select>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Tipo</th>
-              <th>Item</th>
-              <th className="num">Quantidade</th>
-              <th>Observação</th>
-            </tr>
-          </thead>
-          <tbody>
-            {movs.map((m) => (
-              <tr key={m.id}>
-                <td>{formatarData(m.dataHora)}</td>
-                <td>
-                  <span className={`etiqueta ${m.tipo === 'ENTRADA' ? 'entrada' : 'saida'}`}>
-                    {m.tipo === 'ENTRADA' ? 'Entrada' : 'Saída'}
-                  </span>
-                </td>
-                <td>{m.item.nome}</td>
-                <td className="num">
-                  {m.tipo === 'ENTRADA' ? '+' : '−'}
-                  {m.quantidade} {m.item.unidade}
-                </td>
-                <td>{m.observacao}</td>
-              </tr>
-            ))}
-            {movs.length === 0 && (
-              <tr>
-                <td colSpan="5" className="vazio">Nenhuma movimentação registrada.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+
+        {movs.length === 0 ? (
+          <div className="empty-state">
+            <ArrowLeftRight size={48} />
+            <p>Nenhuma movimentação registrada.</p>
+          </div>
+        ) : (
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Tipo</th>
+                  <th>Item</th>
+                  <th className="col-num">Quantidade</th>
+                  <th>Observação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {movs.map(m => (
+                  <tr key={m.id}>
+                    <td style={{ whiteSpace: 'nowrap' }}>{formatarData(m.dataHora)}</td>
+                    <td>
+                      <span className={`badge ${m.tipo === 'ENTRADA' ? 'badge-success' : 'badge-danger'}`}>
+                        {m.tipo === 'ENTRADA' ? '↓ Entrada' : '↑ Saída'}
+                      </span>
+                    </td>
+                    <td style={{ fontWeight: 500 }}>{m.item.nome}</td>
+                    <td className="col-num" style={{ fontWeight: 600 }}>
+                      <span style={{ color: m.tipo === 'ENTRADA' ? 'var(--success)' : 'var(--danger)' }}>
+                        {m.tipo === 'ENTRADA' ? '+' : '−'}{m.quantidade}
+                      </span>
+                      {' '}
+                      <span style={{ color: 'var(--text-tertiary)', fontSize: '0.85rem' }}>
+                        {m.item.unidade}
+                      </span>
+                    </td>
+                    <td style={{ color: m.observacao ? 'var(--text)' : 'var(--text-tertiary)' }}>
+                      {m.observacao || '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-    </section>
+    </div>
   )
 }
